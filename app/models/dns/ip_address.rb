@@ -12,9 +12,10 @@ module Dns
     }
 
     scope :include_hostnames, ->(included_hostnames) {
-      return if included_hostnames.blank?
 
-      where(hostnames: { hostname: included_hostnames.split(',') })
+      included_hostnames = included_hostnames.split(',')
+
+      where(hostnames: { hostname: included_hostnames })
     }
   end
 end
