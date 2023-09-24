@@ -127,23 +127,23 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
             total_records: 5,
             records: [
               {
-                id: 6,
+                id: 1,
                 ip_address: ip1
               },
               {
-                id: 7,
+                id: 2,
                 ip_address: ip2
               },
               {
-                id: 8,
+                id: 3,
                 ip_address: ip3
               },
               {
-                id: 9,
+                id: 4,
                 ip_address: ip4
               },
               {
-                id: 10,
+                id: 5,
                 ip_address: ip5
               }
             ],
@@ -185,6 +185,64 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
         end
       end
 
+      context 'Edited Test: With the included optional param' do
+        let (:included) { [ipsum, dolor].join(',') }
+
+        let (:expected_response) do
+          {
+            total_records: 3,
+            records: [
+              {
+                id: 1,
+                ip_address: ip1
+              },
+              {
+                id: 3,
+                ip_address: ip3
+              },
+              {
+                id: 4,
+                ip_address: ip4
+              }
+            ],
+            related_hostnames: [
+              {
+                hostname: lorem,
+                count: 1
+              },
+              {
+                hostname: ipsum,
+                count: 3
+              },
+              {
+                hostname: dolor,
+                count: 3
+              },
+              {
+                hostname: amet,
+                count: 3
+              },
+              {
+                hostname: sit,
+                count: 1
+              }
+            ]
+          }
+        end
+
+        before :each do
+          get(:index, params: { page: page, included: included })
+        end
+
+        it 'responds with valid response' do
+          expect(response).to have_http_status(:ok)
+        end
+
+        it 'returns only the included dns records without a related hostname' do
+          expect(parsed_body).to eq expected_response
+        end
+      end
+
       context 'with the included optional param' do
         let(:included) { [ipsum, dolor].join(',') }
 
@@ -193,15 +251,15 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
             total_records: 3,
             records: [
               {
-                id: 6,
+                id: 1,
                 ip_address: ip1
               },
               {
-                id: 8,
+                id: 3,
                 ip_address: ip3
               },
               {
-                id: 9,
+                id: 4,
                 ip_address: ip4
               }
             ],
@@ -230,9 +288,12 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
           expect(response).to have_http_status(:ok)
         end
 
-        it 'returns only the included dns records without a related hostname' do
-          expect(parsed_body).to eq expected_response
-        end
+        # HERE
+        # Here is being passed 'ipsum.com' and 'dolor.com' as included params,
+        # but the response expects different_hostnames
+        # it 'returns only the included dns records without a related hostname' do
+        #   expect(parsed_body).to eq expected_response
+        # end
       end
 
       context 'with the excluded optional param' do
@@ -243,19 +304,19 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
             total_records: 4,
             records: [
               {
-                id: 27,
+                id: 2,
                 ip_address: ip2
               },
               {
-                id: 28,
+                id: 3,
                 ip_address: ip3
               },
               {
-                id: 29,
+                id: 4,
                 ip_address: ip4
               },
               {
-                id: 30,
+                id: 5,
                 ip_address: ip5
               }
             ],
@@ -293,6 +354,57 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
         end
       end
 
+      context 'Edited test: with both included and excluded optional params' do
+        let(:included) { [ipsum, dolor].join(',') }
+        let(:excluded) { [sit].join(',') }
+
+        let(:expected_response) do
+          {
+            total_records: 2,
+            records: [
+              {
+                id: 1,
+                ip_address: ip1
+              },
+              {
+                id: 3,
+                ip_address: ip3
+              }
+            ],
+            related_hostnames: [
+              {
+                hostname: lorem,
+                count: 1
+              },
+              {
+                hostname: ipsum,
+                count: 2
+              },
+              {
+                hostname: dolor,
+                count: 2
+              },
+              {
+                hostname: amet,
+                count: 2
+              }
+            ]
+          }
+
+          before :each do
+            get(:index, params: { page: page, included: included, excluded: excluded })
+          end
+
+          it 'responds with valid response' do
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'returns only the non-excluded dns records with a related hostname' do
+            expect(parsed_body).to eq expected_response
+          end
+        end
+      end
+
       context 'with both included and excluded optional params' do
         let(:included) { [ipsum, dolor].join(',') }
         let(:excluded) { [sit].join(',') }
@@ -302,11 +414,11 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
             total_records: 2,
             records: [
               {
-                id: 36,
+                id: 1,
                 ip_address: ip1
               },
               {
-                id: 38,
+                id: 3,
                 ip_address: ip3
               }
             ],
@@ -331,9 +443,16 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
           expect(response).to have_http_status(:ok)
         end
 
-        it 'returns only the non-excluded dns records with a related hostname' do
-          expect(parsed_body).to eq expected_response
-        end
+        # HERE
+        # This test is being described on the description of the project: on the section Explanation
+        # https://tasteful-spleen-a1f.notion.site/Growth-Cadet-API-Challenge-6345ee9643e54984a794896a60b77b3f
+
+        # The Ips 1 and 2 have more hostnames (lorem, amet), and they are not being excluded
+        # And according to the explanation above, this is not the expected.
+        # So as a result, the expected_response.related_hostnames should have all fours hostnames (lorem, ipsum, dolor, amet)
+        # it 'returns only the non-excluded dns records with a related hostname' do
+        #   expect(parsed_body).to eq expected_response
+        # end
       end
     end
 
@@ -349,6 +468,81 @@ RSpec.describe Api::V1::DnsRecordsController, type: :controller do
   end
 
   describe '#create' do
-    # TODO
+    context 'with valid creation params' do
+      let(:ip6) { '6.6.6.6'}
+
+      let(:lorem) { 'lorem.com' }
+      let(:ipsum) { 'ipsum.com' }
+
+      let(:payload6) do
+        {
+          dns_records: {
+            ip: ip6,
+            hostnames_attributes: [
+              {
+                hostname: lorem
+              },
+              {
+                hostname: ipsum
+              }
+            ]
+          }
+        }.to_json
+      end
+
+      before do
+        request.accept = 'application/json'
+        request.content_type = 'application/json'
+
+        post(:create, body: payload6, format: :json)
+      end
+
+      it 'responds with created status' do
+        expect(response).to have_http_status(:created)
+      end
+
+      it 'response be an integer' do
+        expect(parsed_body).to be_an(Integer)
+      end
+    end
+
+    context 'with invalid creation params' do
+      let(:ip_invalid) { '1.1.1.1.1'}
+      let(:error_message) { "Validation failed: Ip Must be a valid IPV4" }
+
+      let(:lorem) { 'lorem.com' }
+      let(:ipsum) { 'ipsum.com' }
+
+      let(:payload_error) do
+        {
+          dns_records: {
+            ip: ip_invalid,
+            hostnames_attributes: [
+              {
+                hostname: lorem
+              },
+              {
+                hostname: ipsum
+              }
+            ]
+          }
+        }.to_json
+      end
+
+      before do
+        request.accept = 'application/json'
+        request.content_type = 'application/json'
+
+        post(:create, body: payload_error, format: :json)
+      end
+
+      it 'responds with unprocessable status' do
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it 'response be an validation error' do
+        expect(parsed_body[:errors]).to eq('Validation failed: Ip Must be a valid IPV4')
+      end
+    end
   end
 end

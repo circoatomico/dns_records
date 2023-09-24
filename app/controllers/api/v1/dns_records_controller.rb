@@ -1,60 +1,41 @@
 module Api
   module V1
     class DnsRecordsController < ApplicationController
-      # GET /dns_records
+      before_action :validate_page, only: :index
+
       def index
+        @ips = Dns::DnsIpAddressesQuery.new(params: dns_params).call
+        @hostnames = Dns::DnsHostnamesQuery.new(@ips, dns_params).call
 
-        @dns_records = Dns::DnsRecordsQuery.new(params: get_dns_params).call
-
-        included_param = get_dns_params.fetch(:included, Dns::Hostname.all.pluck(:hostname) )
-        excluded_param = get_dns_params.fetch(:excluded, [] )
-
-        # considerar todos, inclusive os que não estao na paginação, talvez
-        @related_hostnames =
-          Dns::Hostname
-            .joins(:ip_addresses)
-            .where(ip_addresses: {id: @dns_records.pluck(:id)})
-            .where(hostname: included_param.split(','))
-            .where.not(hostname: excluded_param )
-            .group(:hostname, 'hostnames.id')
-            .select('hostname, COUNT(*) as count')
-            .order('hostnames.id asc')
-
-        response_data = {
-          total_records: @dns_records.count,
-          records: @dns_records.map { |ip| { id: ip.id, ip_address: ip.ip } },
-          related_hostnames: @related_hostnames.map { |hostname| { hostname: hostname.hostname, count: hostname.count } }
+        dns_records = {
+          total_records: @ips.size,
+          records: @ips,
+          related_hostnames: @hostnames
         }
 
-        render json: response_data
+        render json: dns_records, head: :ok
       end
 
-      # POST /dns_records
       def create
+        dns = Dns::DnsCreateQuery.new(params: create_dns_params).call
 
-        ip_params = params.require(:dns_records).permit(:ip, hostnames_attributes: [:hostname])
-
-        ip = Dns::IpAddress.find_or_initialize_by(ip: ip_params[:ip])
-
-        ip_params[:hostnames_attributes].each do |hostname|
-          ip.hostnames << Dns::Hostname.find_or_create_by(hostname: hostname[:hostname])
-        end
-
-        if ip.save
-          render json: ip.id, status: :created
-        else
-          render json: { errors: ip.errors.full_messages }, status: :unprocessable_entity
-        end
+        render json: dns.id, status: :created
+      rescue => e
+        render json: { errors: e.message }, status: :unprocessable_entity
       end
 
       private
 
-      def get_dns_params
+      def validate_page
+        render json: { error: 'page is required' }, status: :unprocessable_entity if params[:page].blank?
+      end
+
+      def dns_params
         params.permit(:included, :excluded, :page)
       end
 
-      def dns_record_params
-        params.require(:dns_record).permit(:ip, hostnames_attributes: [:hostname])
+      def create_dns_params
+        params.require(:dns_records).permit(:dns_records, :ip, hostnames_attributes: [:hostname])
       end
     end
   end
